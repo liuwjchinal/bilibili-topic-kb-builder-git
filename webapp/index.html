@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>B站虚幻引擎教程知识库</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Unreal Engine on Bilibili</p>
+          <h1>B站虚幻引擎教程知识库</h1>
+          <p class="hero-text">
+            面向教程检索和学习规划的本地浏览页。支持按分类、关键词、状态和排序方式筛选，直接打开视频链接。
+          </p>
+          <div class="hero-stats" id="hero-stats"></div>
+        </div>
+        <div class="hero-panel">
+          <div class="panel-label">本次导出</div>
+          <div class="panel-value" id="generated-at">-</div>
+          <div class="panel-subtitle">分类分布</div>
+          <div class="category-overview" id="category-overview"></div>
+        </div>
+      </header>
+
+      <main class="content-grid">
+        <section class="filters-card">
+          <div class="filters-head">
+            <h2>检索与筛选</h2>
+            <button class="ghost-button" id="reset-button" type="button">重置</button>
+          </div>
+
+          <label class="field">
+            <span>关键词搜索</span>
+            <input id="search-input" type="search" placeholder="标题 / UP主 / 标签 / 简介" />
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>分类</span>
+              <select id="category-select"></select>
+            </label>
+            <label class="field">
+              <span>状态</span>
+              <select id="status-select">
+                <option value="all">全部</option>
+                <option value="ok">仅正常</option>
+                <option value="needs_review">仅待复核</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>排序</span>
+              <select id="sort-select">
+                <option value="play_desc">播放量优先</option>
+                <option value="publish_desc">最新发布</option>
+                <option value="duration_desc">时长最长</option>
+                <option value="confidence_desc">分类置信度</option>
+              </select>
+            </label>
+            <label class="field checkbox-field">
+              <input id="review-only-toggle" type="checkbox" />
+              <span>突出显示待复核项</span>
+            </label>
+          </div>
+
+          <div class="chip-cloud" id="category-chips"></div>
+        </section>
+
+        <section class="results-card">
+          <div class="results-head">
+            <div>
+              <h2>视频列表</h2>
+              <p id="results-summary">正在加载...</p>
+            </div>
+          </div>
+          <div class="video-grid" id="video-grid"></div>
+          <div class="empty-state hidden" id="empty-state">
+            <h3>没有匹配结果</h3>
+            <p>调整筛选条件后再试一次。</p>
+          </div>
+        </section>
+
+        <aside class="detail-card" id="detail-card">
+          <p class="detail-hint">点击任意视频卡片，在这里查看详情。</p>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
