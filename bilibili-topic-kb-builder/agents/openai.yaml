@@ -1,0 +1,6 @@
+interface:
+  display_name: "Bilibili Topic KB Builder"
+  short_description: "Build Bilibili topic crawlers, exports, and local web viewers."
+  default_prompt: "Use $bilibili-topic-kb-builder to build or adapt a Bilibili topic crawler with exports and a local web viewer."
+policy:
+  allow_implicit_invocation: true
