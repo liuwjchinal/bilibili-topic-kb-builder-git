@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -10,9 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import requests
+from yt_dlp import YoutubeDL
 
-from .models import SearchVideoSummary, SearchTask, VideoRecord
+from .models import SearchTask, SearchVideoSummary, VideoRecord
 from .normalizer import build_video_record
+from .packs import PackDefinition
 
 TUTORIAL_KEYWORDS = [
     "教程",
@@ -169,7 +170,9 @@ def fetch_space_playlist_with_browser(
                 if idle_rounds >= max_idle_rounds:
                     break
             if not collected:
-                raise RuntimeError("浏览器空间页未提取到任何 BV 号，请确认当前 Chrome 已登录且空间页可正常加载。")
+                raise RuntimeError(
+                    "浏览器空间页未提取到任何 BV 号，请确认当前 Chrome 已登录且空间页可正常加载。"
+                )
             return _write_playlist_payload(
                 output_json_path=output_json_path,
                 space_url=space_url,
@@ -187,30 +190,23 @@ def fetch_space_playlist_with_ytdlp(
     output_json_path: Path,
     max_attempts: int = 8,
 ) -> SpacePlaylistResult:
-    cmd = [
-        "python",
-        "-m",
-        "yt_dlp",
-        "--socket-timeout",
-        "60",
-        "--flat-playlist",
-        "--ignore-errors",
-        "--dump-single-json",
-        space_url,
-    ]
     last_error = ""
     for attempt in range(1, max_attempts + 1):
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        stdout = result.stdout.strip()
-        stderr = result.stderr.strip()
-        if stdout.startswith("{") and '"entries"' in stdout:
-            payload = json.loads(stdout)
+        payload = None
+        try:
+            with YoutubeDL(
+                {
+                    "socket_timeout": 60,
+                    "extract_flat": True,
+                    "ignoreerrors": True,
+                    "quiet": True,
+                    "no_warnings": True,
+                }
+            ) as ydl:
+                payload = ydl.extract_info(space_url, download=False)
+        except Exception as exc:
+            last_error = str(exc)
+        if payload and payload.get("entries"):
             entries = payload.get("entries") or []
             bvids = [entry["id"] for entry in entries if entry and entry.get("id")]
             return _write_playlist_payload(
@@ -220,7 +216,8 @@ def fetch_space_playlist_with_ytdlp(
                 bvids=bvids,
                 source="yt_dlp",
             )
-        last_error = stderr or stdout or f"yt-dlp failed with code {result.returncode}"
+        if payload is not None:
+            last_error = "yt-dlp returned empty entries"
         time.sleep(min(20, attempt * 3))
     raise RuntimeError(f"无法获取空间播放列表: {last_error}")
 
@@ -286,6 +283,7 @@ def _build_detail_record(
     max_retries: int,
     connect_timeout: float,
     read_timeout: float,
+    pack: PackDefinition | None,
 ) -> tuple[VideoRecord | None, str | None]:
     session = _get_thread_session(request_headers)
     payload = None
@@ -330,6 +328,7 @@ def _build_detail_record(
         task=task,
         run_id=run_id,
         crawl_time=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        pack=pack,
     )
     record.source_pages = [f"space:{index}"]
     return record, None
@@ -347,6 +346,7 @@ def fetch_space_records(
     failed_records_path: Path | None = None,
     request_headers: dict[str, str] | None = None,
     progress_label: str = "fetched",
+    pack: PackDefinition | None = None,
 ) -> list[VideoRecord]:
     records, existing_map = _load_checkpoint_records(checkpoint_path)
     headers = request_headers or {
@@ -370,6 +370,7 @@ def fetch_space_records(
                 max_retries=max_retries,
                 connect_timeout=connect_timeout,
                 read_timeout=read_timeout,
+                pack=pack,
             ): (index, bvid)
             for index, bvid in pending
         }

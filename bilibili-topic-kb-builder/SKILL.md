@@ -1,6 +1,6 @@
 ---
 name: bilibili-topic-kb-builder
-description: Build, adapt, or review a Bilibili topic video knowledge-base pipeline that searches topic videos, enriches metadata, classifies content, exports CSV/XLSX/JSONL/Markdown, and generates a local static web viewer. Use when Codex needs to create or modify a B站专题爬虫/知识库工具，补充断点续跑、增量更新、规则分类、网页展示，或把现有实现抽成可复用模板。
+description: Build, adapt, or review a Bilibili topic or uploader-space video knowledge-base pipeline that searches topic videos, crawls uploader spaces, enriches metadata, classifies content, retries failed records, exports CSV/XLSX/JSONL/Markdown, and generates a local static web viewer.
 ---
 
 # Bilibili Topic KB Builder
@@ -9,65 +9,99 @@ description: Build, adapt, or review a Bilibili topic video knowledge-base pipel
 
 默认目标：
 
-- 低频本地批处理
+- 本地低频批处理
 - HTTP 优先，浏览器兜底
 - JSONL 作为主数据源
 - 同步导出表格、Markdown 索引和本地静态网页
 - 中文总结和可点击文件链接
 - 所有文本文件统一使用 UTF-8
 
+## 强制规则
+
+### 1. 先判定执行场景
+
+- 若用户提供 `space.bilibili.com`、`browser-debug-url`、`retry-space-failed`，优先判定为空间场景。
+- 若用户没有给出空间入口，默认走主题搜索 `run` 场景。
+- 不要把空间抓取误做成关键词搜索。
+
+### 2. 主题搜索主链路
+
+- 当前主题搜索主链路已经是纯 Python 解析搜索页内嵌状态，不再依赖 Node.js。
+- 详情接口遇到 `412`、超时或字段缺失时，只对缺字段记录做补采。
+- 只有纯 Python 主链路失败时，才启用 Playwright 搜索兜底。
+
+### 3. 空间抓取主链路
+
+- 空间播放列表默认优先使用 `yt_dlp` Python API。
+- 若用户提供 `browser-debug-url`，优先接管已登录 Chrome 抓取空间页。
+- 详情补采使用 Python 并发请求，必须保留失败清单和 checkpoint。
+
+### 4. 空间场景交付闭环
+
+- `space` / `retry-space-failed` 场景必须检查这些文件：
+  - `space_playlist.json`
+  - `space_records_checkpoint.jsonl`
+  - `space_failed_bvids.jsonl`
+  - `runs/*_space_summary.json` 或 `runs/*_retry_space_failed_summary.json`
+  - `unreal_tutorials.jsonl`
+  - `index.md`
+  - `web/index.html`
+- 若生成教程子集，还必须同步生成：
+  - `tutorial_only/unreal_tutorials.jsonl`
+  - `tutorial_only/index.md`
+  - `tutorial_only/web/index.html`
+
+### 5. UTF-8 全链路
+
+- Windows 下所有文本文件必须显式使用 UTF-8。
+- 输出 `summary`、`index.md`、`checkpoint`、配置文件后，要回读检查是否出现乱码。
+
+### 6. 回执要求
+
+- 总结默认使用中文。
+- 所有本地路径默认用可点击 Markdown 文件链接。
+- 回执至少给出：
+  - 真实执行命令
+  - `summary` 路径
+  - 主数据入口
+  - 网页入口
+  - 残留风险
+
+### 7. 验证要求
+
+- 至少执行单元测试。
+- 至少执行与本次场景匹配的一次真实命令。
+- 对 `run` 场景至少验证 `run -> export` 闭环。
+- 对 `space` 场景至少验证 playlist、checkpoint、export 和失败清单。
+
 ## 工作流
 
 ### 1. 先界定任务边界
 
-优先确认这些事实：
+确认：
 
-- 主题词是什么，是否只限单一专题
-- 是一次性采集，还是可重复更新工具
-- 最终交付需要哪些导出物
-- 是否需要网页展示
+- 走 `run`、`space` 还是 `retry-space-failed`
+- 关键词矩阵或 UP 主空间链接
+- 是否需要静态网页
+- 最终要哪些导出物
 
-如果仓库里已经有原型，先复用现有目录和数据格式，不要平行造第二套。
-
-### 2. 用稳定链路设计采集器
-
-优先采用：
-
-1. 搜索结果页 HTML
-2. 页面内嵌状态解析
-3. 详情接口补全缺失字段
-4. 浏览器自动化兜底
-
-不要把脆弱的 HTML 选择器解析当成唯一主链路。
-
-搜索 API 或视频 API 遇到 `412`、限流或字段缺失时：
-
-- 先检查是否能从搜索页内嵌状态直接拿到结果
-- 只对缺失记录做详情补采
-- 只在确有必要时启用浏览器兜底
-
-在 Windows 上调用 Node 子进程解析页面时，强制使用 UTF-8 读写，避免中文解码失败。
-
-### 3. 按模块拆分项目
-
-默认拆分为这些模块：
+### 2. 模块边界
 
 - `config`：环境变量、路径、限速、重试
 - `planner`：关键词矩阵、分页任务、排序策略
 - `collector`：搜索页抓取、详情补采、标签补采、浏览器兜底
-- `normalizer`：字段标准化、去重、状态判定
+- `space_collector`：空间列表、详情并发补采、失败记录
+- `normalizer`：字段标准化、去重、状态判断
 - `classifier`：规则分类、置信度、无关内容过滤
 - `store`：断点续跑、失败日志、seen 索引
 - `exporter`：CSV/XLSX/JSONL/Markdown/网页导出
-- `runner`：CLI 入口和编排
+- `runner`：CLI 和编排
 
-当你需要完整布局、CLI 约定和状态文件规则时，读取 [architecture.md](./references/architecture.md)。
+### 3. 数据契约
 
-### 4. 固定数据契约
+以 JSONL 为主数据源，其他导出都从 JSONL 派生。
 
-保持 JSONL 为主数据源，其他导出全部从 JSONL 派生。
-
-最低字段集合：
+至少稳定这些字段：
 
 - `video_id`
 - `bvid`
@@ -90,62 +124,30 @@ description: Build, adapt, or review a Bilibili topic video knowledge-base pipel
 - `run_id`
 - `status`
 
-当前端或导出字段调整时，读取 [data-contract.md](./references/data-contract.md)。
+若模型里新增字段，例如封面或头像，必须同步验证 `run -> export -> reload -> export` 闭环。
 
-### 5. 生成网页展示
+### 4. 网页导出
 
-如果需求包含“网页展示”或“本地浏览页”：
+- 复用 [assets/webapp](./assets/webapp) 模板。
+- 在导出阶段生成 `web/data.js`。
+- 页面读取 `window.__BILIBILI_KB_DATA__`。
 
-- 直接复用 [webapp](./assets/webapp) 模板
-- 在导出阶段生成 `web/data.js`
-- 页面直接读取 `window.__BILIBILI_KB_DATA__`
-- 默认支持分类筛选、关键词搜索、排序、详情面板、原视频跳转
+### 5. 风险判断
 
-如果现有项目已经有导出器，把网页生成接到导出链路里，不要另起独立脚本。
-
-### 6. 保证稳定性
-
-默认必须具备：
-
-- 请求间隔随机抖动
-- 可恢复状态码重试
-- 任务粒度断点续跑
-- 失败日志
-- `seen_videos` 增量索引
-- `needs_review` 质量标记
-
-优先级原则：
-
-1. 先让单关键词单页 smoke run 跑通
-2. 再补查询矩阵和去重
-3. 再补分类、状态、续跑
-4. 最后补网页和浏览器兜底
-
-### 7. 验证
-
-至少执行这三类验证：
-
-- 单元测试：`planner`、`classifier`、`normalizer`、`exporter`
-- 环境探针：验证详情接口或当前主链路是否可用
-- smoke run：单关键词、单页、默认排序，确认导出物和网页都生成
-
-完成后，优先汇报：
-
-- 关键变更
-- 真实验证命令
-- 输出入口路径
-- 仍然存在的风险
+- 详情接口 `412`、超时、字段缺失
+- 空间列表依赖 `yt_dlp` 或浏览器登录态
+- 搜索页结构变更导致解析器失效
+- JSONL 契约变更导致独立 `export` 失败
 
 ## 资源
 
 ### references/
 
-- [architecture.md](./references/architecture.md)：推荐模块边界、CLI、状态文件和验证流程
-- [data-contract.md](./references/data-contract.md)：记录级字段和网页 `data.js` 结构
+- [architecture.md](./references/architecture.md)
+- [data-contract.md](./references/data-contract.md)
 
 ### assets/
 
-- [webapp](./assets/webapp)：静态网页模板
-- [env.example](./assets/env.example)：环境变量模板
+- [webapp](./assets/webapp)
+- [env.example](./assets/env.example)
 
-优先复制模板后再改，不要每次从零重写网页壳子。

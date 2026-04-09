@@ -1,0 +1,159 @@
+slug: lyra
+display_name: Lyra
+description: Lyra Starter Game learning videos and implementation breakdowns.
+search:
+  core_terms:
+    - "Lyra Starter Game"
+    - "Lyra UE5"
+    - "UE5 Lyra"
+  expansion_terms:
+    - "教程"
+    - "源码"
+    - "GAS"
+    - "Gameplay Ability System"
+    - "Experience"
+    - "GameFeature"
+    - "CommonUI"
+    - "多人"
+    - "网络"
+    - "Bot"
+  custom_queries:
+    - "Lyra 动画蓝图"
+    - "Lyra Blueprint"
+    - "Lyra CommonUI"
+    - "Lyra ShooterCore"
+    - "Lyra Inventory"
+    - "Lyra AbilitySet"
+  orders:
+    - "default"
+    - "pubdate"
+  pages: 2
+gates:
+  must_have_any:
+    - "lyra"
+    - "shootercore"
+    - "topdownarena"
+    - "lyra starter game"
+    - "ue5 lyra"
+    - "gamefeature"
+    - "gameplay ability system"
+    - "abilityset"
+    - "commonui"
+  context_any:
+    - "unreal"
+    - "ue5"
+    - "ue4"
+    - "starter game"
+    - "tutorial"
+    - "教程"
+    - "源码"
+    - "blueprint"
+    - "动画"
+    - "animation"
+    - "ability"
+    - "abilityset"
+    - "gamefeature"
+    - "experience"
+    - "commonui"
+    - "shootercore"
+    - "inventory"
+    - "weapon"
+    - "multiplayer"
+    - "replication"
+  irrelevant_keywords:
+    - "明日方舟"
+    - "英雄联盟"
+    - "cf"
+    - "valorant"
+    - "手游"
+    - "动漫"
+    - "reaction"
+domain:
+  key: "game-dev-unreal"
+  display_name: "游戏开发/虚幻"
+  allow_partition_keywords:
+    - "知识"
+    - "科技"
+    - "软件应用"
+    - "设计·创意"
+    - "职业职场"
+    - "野生技能协会"
+    - "计算机技术"
+    - "数码"
+    - "单机游戏"
+    - "网络游戏"
+    - "手机游戏"
+  block_partition_keywords:
+    - "音乐"
+    - "演奏"
+    - "翻唱"
+    - "音乐现场"
+    - "舞蹈"
+    - "影视"
+    - "影视杂谈"
+    - "娱乐"
+    - "美食"
+    - "时尚"
+    - "房产"
+    - "动物圈"
+    - "汽车"
+    - "体育"
+    - "GMV"
+    - "MMD·3D"
+  required_context_any:
+    - "lyra"
+    - "lyra starter game"
+    - "ue5"
+    - "unreal"
+    - "教程"
+    - "源码"
+    - "commonui"
+    - "ability"
+    - "gamefeature"
+    - "blueprint"
+    - "动画"
+categories:
+  - id: setup
+    name: "安装与启动"
+    priority: 10
+    keywords: ["安装", "启动", "下载", "创建", "project setup", "quick start", "入门"]
+  - id: structure
+    name: "项目结构"
+    priority: 20
+    keywords: ["项目结构", "目录", "module", "plugin", "subsystem", "源码", "architecture"]
+  - id: gas
+    name: "GAS/Ability System"
+    priority: 30
+    keywords: ["gas", "ability system", "gameplay ability", "abilityset", "effect", "attribute", "tag"]
+  - id: experience
+    name: "Experience/GameFeature"
+    priority: 40
+    keywords: ["experience", "gamefeature", "game feature", "experience definition", "action set"]
+  - id: blueprint-animation
+    name: "Blueprint/Animation"
+    priority: 45
+    keywords: ["blueprint", "蓝图", "动画", "animation", "anim", "animation blueprint", "abp"]
+  - id: character-camera
+    name: "角色/相机"
+    priority: 50
+    keywords: ["character", "camera", "hero", "pawn", "movement", "input", "controller"]
+  - id: weapon-inventory
+    name: "武器/库存"
+    priority: 60
+    keywords: ["weapon", "inventory", "equipment", "shooter", "rifle", "pickup"]
+  - id: ui-commonui
+    name: "UI/CommonUI"
+    priority: 70
+    keywords: ["commonui", "ui", "widget", "hud", "menu", "indicator"]
+  - id: multiplayer
+    name: "多人网络"
+    priority: 80
+    keywords: ["多人", "网络", "replication", "network", "server", "client", "multiplayer"]
+  - id: ai-bot
+    name: "AI/Bot"
+    priority: 90
+    keywords: ["bot", "ai", "npc", "behavior tree", "blackboard", "enemy"]
+  - id: extension
+    name: "定制扩展"
+    priority: 100
+    keywords: ["扩展", "custom", "mod", "feature", "改造", "二开"]

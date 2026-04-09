@@ -21,10 +21,13 @@ class CatalogStore:
         self.failure_log_path = config.state_dir / "failures.jsonl"
 
     def load_catalog(self) -> dict[str, VideoRecord]:
-        if not self.config.catalog_jsonl_path.exists():
+        catalog_path = self.config.catalog_jsonl_path
+        if not catalog_path.exists() and self.config.legacy_catalog_jsonl_path.exists():
+            catalog_path = self.config.legacy_catalog_jsonl_path
+        if not catalog_path.exists():
             return {}
         records: dict[str, VideoRecord] = {}
-        for line in self.config.catalog_jsonl_path.read_text(encoding="utf-8").splitlines():
+        for line in catalog_path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
             record = VideoRecord.from_json_dict(json.loads(line))

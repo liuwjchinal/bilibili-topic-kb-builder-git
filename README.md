@@ -1,19 +1,14 @@
 # B站虚幻引擎教程知识库爬虫
 
-一个面向“可重复更新”的本地批处理工具，用于采集 B 站虚幻引擎相关教程视频，完成去重、分类、增量更新、断点续跑和多格式导出。
+一个面向“可重复更新”的本地批处理工具，用于采集 B 站虚幻引擎相关视频，完成去重、分类、增量更新、断点续跑和多格式导出。
 
-## 功能概览
+## 当前实现
 
-- 搜索页 HTML 抓取主链路，避免直接依赖高风险搜索接口
-- 视频详情与标签补采，提高字段完整度
-- 查询矩阵自动生成，默认覆盖 `虚幻引擎 / UE4 / UE5 / Unreal Engine`
-- 规则分类器，输出主分类、次分类、命中关键词和置信度
-- 增量更新与断点续跑
-- 导出 `xlsx`、`csv`、`jsonl`、`Markdown` 和本地静态网页
-- 空间抓取支持两种列表来源：
-  - `yt-dlp` 获取 UP 主空间 BV 列表
-  - 已登录 Chrome 的 `debug port` 接管空间页并抓取 BV 列表
-- 空间详情补采支持有限并发，降低全量抓取耗时
+- 主题搜索主链路已经改为纯 Python 解析搜索页内嵌状态，不再依赖 Node.js。
+- 视频详情与标签补采仍走 Python HTTP 请求，遇到字段缺失时按需补齐。
+- 空间抓取默认优先使用 `yt_dlp` Python API 获取 BV 列表。
+- 若空间页需要登录态或站点风控更严格，可通过已登录 Chrome 的 `debug port` 走浏览器接管。
+- 所有导出物以 `JSONL` 为主数据源，同步生成 `CSV`、`XLSX`、`Markdown` 和本地静态网页。
 
 ## 安装
 
@@ -30,25 +25,26 @@ playwright install chromium
 
 ## 配置
 
-复制 [`.env.example`](/D:/UnrealGit/Skills/unreal-source-analyzer/.env.example) 为 `.env` 后按需修改。
+复制 [`.env.example`](/D:/UnrealGit/Skills/unreal-source-analyzer/bilibili-topic-kb-builder-git/.env.example) 为 `.env` 后按需修改。
 
 常用配置：
 
 - `BILIBILI_OUTPUT_DIR`：输出目录
 - `BILIBILI_PAGES`：每个关键词抓取页数
-- `BILIBILI_REQUEST_MIN_DELAY` / `BILIBILI_REQUEST_MAX_DELAY`：搜索抓取限速抖动
-- `BILIBILI_MAX_RETRIES`：通用请求重试次数
-- `BILIBILI_DETAIL_WORKERS`：空间详情补采并发数，默认 `6`
-- `BILIBILI_DETAIL_CONNECT_TIMEOUT`：详情接口连接超时，默认 `5`
-- `BILIBILI_DETAIL_READ_TIMEOUT`：详情接口读取超时，默认 `8`
-- `BILIBILI_BROWSER_FALLBACK`：启用搜索页 Playwright 兜底
-- `BILIBILI_BROWSER_DEBUG_URL`：已登录 Chrome 的 CDP 地址，例如 `http://127.0.0.1:9222`
+- `BILIBILI_REQUEST_TIMEOUT`：搜索页请求超时
+- `BILIBILI_REQUEST_MIN_DELAY` / `BILIBILI_REQUEST_MAX_DELAY`：请求间隔抖动
+- `BILIBILI_MAX_RETRIES`：通用重试次数
+- `BILIBILI_DETAIL_WORKERS`：详情补采并发数
+- `BILIBILI_DETAIL_CONNECT_TIMEOUT` / `BILIBILI_DETAIL_READ_TIMEOUT`：详情接口超时
+- `BILIBILI_BROWSER_FALLBACK`：主题搜索失败时是否启用 Playwright 兜底
+- `BILIBILI_BROWSER_DEBUG_URL`：空间抓取时接管已登录 Chrome 的 CDP 地址
 - `BILIBILI_KEYWORDS_FILE`：自定义关键词文件，一行一个
+- `BILIBILI_COOKIE`：详情接口或搜索页需要时的 Cookie
 - `BILIBILI_SINCE`：仅保留不早于该日期的视频，格式 `YYYY-MM-DD`
 
-## 使用方式
+## 用法
 
-### 1. 关键词搜索抓取
+### 1. 主题搜索抓取
 
 ```bash
 python bilibili_crawler.py run --pages 2
@@ -60,19 +56,19 @@ python bilibili_crawler.py run --pages 2
 python bilibili_crawler.py run --keyword UE5 --pages 1 --orders default
 ```
 
-### 2. 断点续跑
+### 2. 继续未完成任务
 
 ```bash
 python bilibili_crawler.py resume
 ```
 
-### 3. 重新导出已有结果
+### 3. 根据现有 JSONL 重新导出
 
 ```bash
 python bilibili_crawler.py export
 ```
 
-### 4. 环境校验
+### 4. 环境探针
 
 ```bash
 python bilibili_crawler.py validate
@@ -80,13 +76,13 @@ python bilibili_crawler.py validate
 
 ### 5. 抓取 UP 主空间
 
-默认使用 `yt-dlp` 获取空间列表：
+默认优先使用 `yt_dlp` Python API 抓取空间播放列表：
 
 ```bash
 python bilibili_crawler.py space --space-url https://space.bilibili.com/138827797/video --uploader-name "虚幻引擎官方"
 ```
 
-如果你已经打开并登录了 Chrome，且用远程调试端口启动了浏览器，可以直接接管该浏览器抓取空间列表：
+如果你已经打开并登录了 Chrome，且以远程调试端口启动，可直接接管浏览器抓取空间页：
 
 ```bash
 python bilibili_crawler.py space ^
@@ -97,38 +93,55 @@ python bilibili_crawler.py space ^
   --detail-workers 8
 ```
 
-建议的 Chrome 启动方式：
+推荐的 Chrome 启动方式：
 
 ```bash
 chrome.exe --remote-debugging-port=9222 --user-data-dir=D:\chrome-cdp-profile
 ```
 
-说明：
+### 6. 重试空间详情失败 BV
 
-- `--browser-debug-url` 会优先用真实浏览器抓空间页里的 BV 列表
-- `--refresh-playlist` 会忽略本地缓存，重新抓一遍空间列表
-- `--detail-workers` 用于控制详情补采并发，建议从 `4-8` 开始
+```bash
+python bilibili_crawler.py retry-space-failed --uploader-name "虚幻引擎官方"
+```
 
 ## 输出目录
 
 默认输出到 `output/`：
 
-- `unreal_tutorials.xlsx`
-- `unreal_tutorials.csv`
 - `unreal_tutorials.jsonl`
+- `unreal_tutorials.csv`
+- `unreal_tutorials.xlsx`
 - `index.md`
 - `web/index.html`
 - `space_playlist.json`
 - `space_records_checkpoint.jsonl`
 - `space_failed_bvids.jsonl`
+- `tutorial_only/unreal_tutorials.jsonl`
+- `tutorial_only/index.md`
+- `tutorial_only/web/index.html`
 - `state/seen_videos.json`
 - `state/current_run.json`
 - `state/last_run.json`
 - `runs/<run_id>_summary.json`
+- `runs/<run_id>_space_summary.json`
+- `runs/<run_id>_retry_space_failed_summary.json`
 
-## 说明
+## 已验证链路
 
-- 搜索抓取当前会遇到 `412`，因此主流程优先使用搜索结果页 HTML 与页面内嵌状态。
-- 空间抓取如果直接访问接口被风控，优先使用已登录 Chrome 的 `debug port` 获取空间列表，再低并发补详情。
-- 每次 `run`、`export` 或 `space` 成功后，都会同步生成静态网页，可直接打开 [output/web/index.html](/D:/UnrealGit/Skills/unreal-source-analyzer/output/web/index.html) 或对应输出目录下的 `web/index.html` 浏览分类结果。
-- 请低频运行，并遵守站点规则与合规要求。
+- `run` 主题搜索默认矩阵单页已真实跑通，72 个任务完成。
+- `run -> export` 闭环已验证。
+- 搜索页解析已改为纯 Python，并通过真实页面解析验证。
+- `space` 的 `yt_dlp` 已切为 Python API，但真实网络环境下仍可能遇到站点侧 `SSL EOF`、风控或登录态限制。
+
+## 当前风险
+
+- B 站详情接口仍可能返回 `412`、超时或字段缺失，因此详情补采不能视为稳定接口。
+- 空间抓取依赖 `yt_dlp` 或浏览器登录态，网络波动和站点风控会直接影响成功率。
+- 搜索页结构若发生大改，纯 Python 解析器仍需要跟进。
+
+## 入口示例
+
+- 默认网页入口：[output/web/index.html](/D:/UnrealGit/Skills/unreal-source-analyzer/bilibili-topic-kb-builder-git/output/web/index.html)
+- 默认汇总目录：[output](/D:/UnrealGit/Skills/unreal-source-analyzer/bilibili-topic-kb-builder-git/output)
+

@@ -48,6 +48,8 @@ def search_with_playwright(task: SearchTask, headless: bool = True) -> list[Sear
                 description=item.get("description", ""),
                 tag_text=item.get("tag", ""),
                 publish_text=item.get("pubstr", ""),
+                partition_name=item.get("typename", ""),
+                partition_id=item.get("typeid") or item.get("tid"),
             )
         )
     return results

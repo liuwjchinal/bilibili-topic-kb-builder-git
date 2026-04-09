@@ -3,24 +3,51 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>B站虚幻引擎教程知识库</title>
+    <title>B站知识库</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Unreal Engine on Bilibili</p>
-          <h1>B站虚幻引擎教程知识库</h1>
-          <p class="hero-text">
-            面向教程检索和学习规划的本地浏览页。支持按分类、关键词、状态和排序方式筛选，直接打开视频链接。
-          </p>
+          <div class="hero-topline">
+            <div>
+              <p class="eyebrow">Bilibili Knowledge Base</p>
+              <h1 id="page-title">B站知识库</h1>
+              <p class="hero-text" id="page-description">
+                面向教程检索、专题归档和学习规划的本地知识库。支持静态快照浏览，也支持服务模式下的实时刷新。
+              </p>
+            </div>
+            <section class="service-console">
+              <div class="toolbar-row">
+                <label class="field compact-field">
+                  <span>专题</span>
+                  <select id="pack-select"></select>
+                </label>
+                <button class="ghost-button service-only" id="add-topic-button" type="button">Add Topic</button>
+                <button class="primary-button service-only" id="refresh-button" type="button">Refresh</button>
+                <button class="ghost-button service-only" id="cancel-button" type="button">停止任务</button>
+              </div>
+              <div class="service-meta">
+                <div>
+                  <span class="meta-label">当前状态</span>
+                  <strong id="service-status">静态快照</strong>
+                </div>
+                <div>
+                  <span class="meta-label">上次刷新</span>
+                  <strong id="last-refreshed">-</strong>
+                </div>
+              </div>
+              <p class="service-notice" id="service-notice"></p>
+              <p class="service-error" id="service-error">当前没有错误。</p>
+            </section>
+          </div>
           <div class="hero-stats" id="hero-stats"></div>
         </div>
         <div class="hero-panel">
-          <div class="panel-label">本次导出</div>
+          <div class="panel-label">快照信息</div>
           <div class="panel-value" id="generated-at">-</div>
-          <div class="panel-subtitle">分类分布</div>
+          <div class="panel-subtitle">分类概览</div>
           <div class="category-overview" id="category-overview"></div>
         </div>
       </header>
@@ -28,7 +55,7 @@
       <main class="content-grid">
         <section class="filters-card">
           <div class="filters-head">
-            <h2>检索与筛选</h2>
+            <h2>搜索与筛选</h2>
             <button class="ghost-button" id="reset-button" type="button">重置</button>
           </div>
 
@@ -64,7 +91,7 @@
             </label>
             <label class="field checkbox-field">
               <input id="review-only-toggle" type="checkbox" />
-              <span>突出显示待复核项</span>
+              <span>突出显示待复核</span>
             </label>
           </div>
 
@@ -77,11 +104,12 @@
               <h2>视频列表</h2>
               <p id="results-summary">正在加载...</p>
             </div>
+            <div class="job-banner" id="job-banner"></div>
           </div>
           <div class="video-grid" id="video-grid"></div>
           <div class="empty-state hidden" id="empty-state">
             <h3>没有匹配结果</h3>
-            <p>调整筛选条件后再试一次。</p>
+            <p id="empty-state-text">调整筛选条件后再试一次。</p>
           </div>
         </section>
 
@@ -89,6 +117,104 @@
           <p class="detail-hint">点击任意视频卡片，在这里查看详情。</p>
         </aside>
       </main>
+    </div>
+
+    <div class="modal-shell hidden service-only" id="topic-modal-shell" aria-hidden="true">
+      <div class="modal-backdrop" id="topic-modal-backdrop"></div>
+      <section class="modal-card" aria-labelledby="topic-modal-title" aria-modal="true" role="dialog">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">Create Topic</p>
+            <h2 id="topic-modal-title">添加专题</h2>
+            <p class="modal-text">从现有模板克隆一个新专题。创建后不会自动抓取，你可以稍后手动点击 Refresh。</p>
+          </div>
+          <button class="ghost-button" id="topic-modal-close" type="button">关闭</button>
+        </div>
+
+        <form class="topic-form" id="topic-form">
+          <section class="form-section">
+            <div class="section-head">
+              <h3>基本信息</h3>
+            </div>
+            <div class="topic-grid topic-grid-two">
+              <label class="field">
+                <span>模板</span>
+                <select id="topic-template-select" required></select>
+              </label>
+              <label class="field">
+                <span>专题名称</span>
+                <input id="topic-display-name" type="text" placeholder="例如：Lyra UI Deep Dive" required />
+              </label>
+              <label class="field">
+                <span>Slug</span>
+                <input id="topic-slug" type="text" placeholder="lyra-ui-deep-dive" required />
+              </label>
+              <label class="field topic-grid-span-2">
+                <span>说明</span>
+                <textarea id="topic-description" rows="3" placeholder="描述这个专题聚焦的方向。"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <div class="section-head">
+              <h3>搜索词</h3>
+              <p class="meta-text">每行一项，也可以逗号分隔。</p>
+            </div>
+            <div class="topic-grid topic-grid-three">
+              <label class="field">
+                <span>核心词</span>
+                <textarea id="topic-core-terms" rows="6" required></textarea>
+              </label>
+              <label class="field">
+                <span>扩展词</span>
+                <textarea id="topic-expansion-terms" rows="6"></textarea>
+              </label>
+              <label class="field">
+                <span>自定义查询</span>
+                <textarea id="topic-custom-queries" rows="6"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <div class="section-head">
+              <h3>过滤门槛</h3>
+              <p class="meta-text">建议保留专题门槛词，避免抓进无关视频。</p>
+            </div>
+            <div class="topic-grid topic-grid-two">
+              <label class="field">
+                <span>必须命中任一词</span>
+                <textarea id="topic-must-have-any" rows="5"></textarea>
+              </label>
+              <label class="field">
+                <span>无关关键词</span>
+                <textarea id="topic-irrelevant-keywords" rows="5"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <div class="section-head section-head-with-action">
+              <div>
+                <h3>分类</h3>
+                <p class="meta-text">每个分类至少保留一个关键词。</p>
+              </div>
+              <button class="ghost-button" id="topic-add-category" type="button">添加分类</button>
+            </div>
+            <div class="topic-category-list" id="topic-categories"></div>
+          </section>
+
+          <div class="topic-form-feedback">
+            <p class="service-error hidden" id="topic-form-error"></p>
+          </div>
+
+          <div class="topic-form-actions">
+            <button class="ghost-button" id="topic-form-cancel" type="button">取消</button>
+            <button class="primary-button" id="topic-form-submit" type="submit">创建专题</button>
+          </div>
+        </form>
+      </section>
     </div>
 
     <script src="./data.js"></script>

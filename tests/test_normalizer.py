@@ -21,6 +21,8 @@ class NormalizerTests(unittest.TestCase):
             title="UE5 蓝图入门",
             link="https://www.bilibili.com/video/BVTEST123456",
             duration_text="12:00",
+            partition_name="知识",
+            partition_id=36,
         )
         detail = {
             "aid": 100,
@@ -35,6 +37,8 @@ class NormalizerTests(unittest.TestCase):
         record = build_video_record(summary, detail, ["UE5", "蓝图"], task, "run_x", "2026-03-23T00:00:00+00:00")
         self.assertEqual(record.primary_category, "蓝图系统")
         self.assertEqual(record.play_count, 1024)
+        self.assertEqual(record.platform_partition_name, "知识")
+        self.assertEqual(record.platform_partition_id, 36)
 
     def test_merge_records_accumulates_queries(self) -> None:
         base = VideoRecord(

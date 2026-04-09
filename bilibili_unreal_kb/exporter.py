@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .models import VideoRecord
+from .packs import PackDefinition, get_pack
 
 try:
     import pandas as pd
@@ -30,7 +31,13 @@ def _normalize_records(records: list[VideoRecord]) -> list[VideoRecord]:
     return [record for record in records if record.status != "filtered_irrelevant"]
 
 
-def build_frontend_payload(records: list[VideoRecord]) -> dict:
+def build_frontend_payload(
+    records: list[VideoRecord],
+    *,
+    pack: PackDefinition | None = None,
+    snapshot_meta: dict | None = None,
+) -> dict:
+    resolved_pack = pack or get_pack()
     relevant_records = _normalize_records(records)
     categories: dict[str, list[VideoRecord]] = defaultdict(list)
     uploaders: set[str] = set()
@@ -41,65 +48,78 @@ def build_frontend_payload(records: list[VideoRecord]) -> dict:
 
     category_rows = []
     for category, items in categories.items():
+        total_duration = sum(item.duration_seconds for item in items)
         category_rows.append(
             {
                 "name": category,
                 "count": len(items),
-                "total_duration_seconds": sum(item.duration_seconds for item in items),
-                "total_duration_text": _humanize_total_duration(
-                    sum(item.duration_seconds for item in items)
-                ),
+                "total_duration_seconds": total_duration,
+                "total_duration_text": _humanize_total_duration(total_duration),
             }
         )
     category_rows.sort(key=lambda item: (-item["count"], item["name"]))
 
-    videos = []
-    for record in sorted(
-        relevant_records,
-        key=lambda item: (item.primary_category, -item.play_count, item.title),
-    ):
-        videos.append(record.to_json_dict())
+    videos = [
+        record.to_json_dict()
+        for record in sorted(
+            relevant_records,
+            key=lambda item: (item.primary_category, -item.play_count, item.title),
+        )
+    ]
 
+    total_duration = sum(item.duration_seconds for item in relevant_records)
     return {
+        "pack": {
+            "slug": resolved_pack.slug,
+            "display_name": resolved_pack.display_name,
+            "description": resolved_pack.description,
+            "domain_key": resolved_pack.domain.key,
+            "domain_label": resolved_pack.domain.display_name,
+        },
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "summary": {
             "total_videos": len(relevant_records),
             "total_categories": len(categories),
             "total_uploaders": len(uploaders),
-            "total_duration_seconds": sum(item.duration_seconds for item in relevant_records),
-            "total_duration_text": _humanize_total_duration(
-                sum(item.duration_seconds for item in relevant_records)
-            ),
+            "total_duration_seconds": total_duration,
+            "total_duration_text": _humanize_total_duration(total_duration),
         },
         "categories": category_rows,
         "videos": videos,
+        "snapshot": snapshot_meta or {},
     }
 
 
-def _write_web_viewer(records: list[VideoRecord], output_dir: Path) -> str:
+def _write_web_viewer(payload: dict, output_dir: Path) -> str:
     web_dir = output_dir / "web"
     web_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(WEBAPP_DIR / "index.html", web_dir / "index.html")
     shutil.copy2(WEBAPP_DIR / "styles.css", web_dir / "styles.css")
     shutil.copy2(WEBAPP_DIR / "app.js", web_dir / "app.js")
-
-    payload = build_frontend_payload(records)
     data_script = "window.__BILIBILI_KB_DATA__ = " + json.dumps(payload, ensure_ascii=False, indent=2) + ";\n"
     (web_dir / "data.js").write_text(data_script, encoding="utf-8")
     return str(web_dir / "index.html")
 
 
-def export_catalog(records: list[VideoRecord], output_dir: Path) -> dict[str, str]:
+def export_catalog(
+    records: list[VideoRecord],
+    output_dir: Path,
+    *,
+    pack: PackDefinition | None = None,
+    snapshot_meta: dict | None = None,
+) -> dict[str, str]:
     relevant_records = _normalize_records(records)
     rows = [record.to_export_row() for record in relevant_records]
     rows.sort(key=lambda row: (row["primary_category"], -int(row["play_count"])))
-    jsonl_path = output_dir / "unreal_tutorials.jsonl"
-    csv_path = output_dir / "unreal_tutorials.csv"
-    xlsx_path = output_dir / "unreal_tutorials.xlsx"
+    jsonl_path = output_dir / "videos.jsonl"
+    csv_path = output_dir / "videos.csv"
+    xlsx_path = output_dir / "videos.xlsx"
     markdown_path = output_dir / "index.md"
 
     if pd is None:  # pragma: no cover
-        raise RuntimeError("缺少 pandas，请先执行 `pip install -r requirements.txt`。")
+        raise RuntimeError("missing pandas; run `pip install -r requirements.txt` first")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
     jsonl_path.write_text(
         "\n".join(json.dumps(record.to_json_dict(), ensure_ascii=False) for record in relevant_records),
         encoding="utf-8",
@@ -107,8 +127,9 @@ def export_catalog(records: list[VideoRecord], output_dir: Path) -> dict[str, st
     dataframe = pd.DataFrame(rows)
     dataframe.to_csv(csv_path, index=False, encoding="utf-8-sig")
     dataframe.to_excel(xlsx_path, index=False)
-    markdown_path.write_text(build_markdown_index(records), encoding="utf-8")
-    web_index_path = _write_web_viewer(records, output_dir)
+    markdown_path.write_text(build_markdown_index(relevant_records, pack=pack), encoding="utf-8")
+    payload = build_frontend_payload(relevant_records, pack=pack, snapshot_meta=snapshot_meta)
+    web_index_path = _write_web_viewer(payload, output_dir)
     return {
         "csv": str(csv_path),
         "xlsx": str(xlsx_path),
@@ -118,17 +139,17 @@ def export_catalog(records: list[VideoRecord], output_dir: Path) -> dict[str, st
     }
 
 
-def build_markdown_index(records: list[VideoRecord]) -> str:
+def build_markdown_index(records: list[VideoRecord], *, pack: PackDefinition | None = None) -> str:
+    resolved_pack = pack or get_pack()
     relevant_records = _normalize_records(records)
     categories: dict[str, list[VideoRecord]] = defaultdict(list)
     for record in relevant_records:
         categories[record.primary_category].append(record)
 
-    lines: list[str] = ["# B站虚幻引擎教程知识库索引", ""]
+    lines: list[str] = [f"# {resolved_pack.display_name} 视频知识库索引", ""]
+    lines.append(f"- Pack: `{resolved_pack.slug}`")
     lines.append(f"- 视频总数：{len(relevant_records)}")
-    lines.append(
-        f"- 总时长：{_humanize_total_duration(sum(record.duration_seconds for record in relevant_records))}"
-    )
+    lines.append(f"- 总时长：{_humanize_total_duration(sum(record.duration_seconds for record in relevant_records))}")
     lines.append("")
 
     for category, items in sorted(categories.items(), key=lambda item: (-len(item[1]), item[0])):

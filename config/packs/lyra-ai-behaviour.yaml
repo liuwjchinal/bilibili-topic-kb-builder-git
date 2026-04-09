@@ -1,0 +1,242 @@
+slug: lyra-ai-behaviour
+display_name: Lyra AI Behaviour
+description: Lyra Starter Game learning videos and implementation breakdowns.
+search:
+  core_terms:
+  - Lyra Starter Game
+  - Lyra UE5
+  - UE5 Lyra
+  expansion_terms:
+  - 教程
+  - 源码
+  - GAS
+  - Gameplay Ability System
+  - Experience
+  - GameFeature
+  - CommonUI
+  - AI
+  - Behavior Tree
+  - Blackboard
+  - 多人
+  - 网络
+  - Bot
+  custom_queries:
+  - Lyra Bot
+  - Lyra AI
+  - Lyra Behavior Tree
+  - Lyra Blackboard
+  - Lyra ShooterCore
+  - Lyra Inventory
+  - Lyra AbilitySet
+  orders:
+  - default
+  - pubdate
+  pages: 2
+gates:
+  must_have_any:
+  - lyra
+  - shootercore
+  - topdownarena
+  - lyra starter game
+  - ue5 lyra
+  - gamefeature
+  - gameplay ability system
+  - abilityset
+  - commonui
+  - behavior tree
+  - blackboard
+  context_any:
+  - unreal
+  - ue5
+  - ue4
+  - starter game
+  - tutorial
+  - 教程
+  - 源码
+  - blueprint
+  - 蓝图
+  - animation
+  - 动画
+  - ability
+  - abilityset
+  - gamefeature
+  - experience
+  - commonui
+  - shootercore
+  - inventory
+  - weapon
+  - multiplayer
+  - replication
+  - ai
+  - bot
+  - npc
+  - behavior tree
+  - blackboard
+  irrelevant_keywords:
+  - 明日方舟
+  - 英雄联盟
+  - cf
+  - valorant
+  - 手游
+  - 动漫
+  - reaction
+domain:
+  key: game-dev-unreal
+  display_name: 游戏开发/虚幻
+  allow_partition_keywords:
+  - 知识
+  - 科技
+  - 软件应用
+  - 设计·创意
+  - 职业职场
+  - 野生技能协会
+  - 计算机技术
+  - 数码
+  - 单机游戏
+  - 网络游戏
+  - 手机游戏
+  block_partition_keywords:
+  - 音乐
+  - 演奏
+  - 翻唱
+  - 音乐现场
+  - 舞蹈
+  - 影视
+  - 影视杂谈
+  - 娱乐
+  - 美食
+  - 时尚
+  - 房产
+  - 动物圈
+  - 汽车
+  - 体育
+  - GMV
+  - MMD·3D
+  required_context_any:
+  - lyra
+  - ue5
+  - unreal
+  - ai
+  - bot
+  - behavior tree
+  - blackboard
+  - 教程
+  - 源码
+categories:
+- id: setup
+  name: 安装与启动
+  keywords:
+  - 安装
+  - 启动
+  - 下载
+  - 创建
+  - project setup
+  - quick start
+  - 入门
+  priority: 10
+- id: structure
+  name: 项目结构
+  keywords:
+  - 项目结构
+  - 目录
+  - module
+  - plugin
+  - subsystem
+  - 源码
+  - architecture
+  priority: 20
+- id: gas
+  name: GAS/Ability System
+  keywords:
+  - gas
+  - ability system
+  - gameplay ability
+  - abilityset
+  - effect
+  - attribute
+  - tag
+  priority: 30
+- id: experience
+  name: Experience/GameFeature
+  keywords:
+  - experience
+  - gamefeature
+  - game feature
+  - experience definition
+  - action set
+  priority: 40
+- id: blueprint-animation
+  name: Blueprint/Animation
+  keywords:
+  - blueprint
+  - 蓝图
+  - 动画
+  - animation
+  - anim
+  - animation blueprint
+  - abp
+  priority: 45
+- id: character-camera
+  name: 角色/相机
+  keywords:
+  - character
+  - camera
+  - hero
+  - pawn
+  - movement
+  - input
+  - controller
+  priority: 50
+- id: weapon-inventory
+  name: 武器/库存
+  keywords:
+  - weapon
+  - inventory
+  - equipment
+  - shooter
+  - rifle
+  - pickup
+  priority: 60
+- id: ui-commonui
+  name: UI/CommonUI
+  keywords:
+  - commonui
+  - ui
+  - widget
+  - hud
+  - menu
+  - indicator
+  priority: 70
+- id: multiplayer
+  name: 多人网络
+  keywords:
+  - 多人
+  - 网络
+  - replication
+  - network
+  - server
+  - client
+  - multiplayer
+  priority: 80
+- id: ai-bot
+  name: AI/Bot
+  keywords:
+  - bot
+  - ai
+  - npc
+  - behavior tree
+  - blackboard
+  - perception
+  - eqs
+  - enemy
+  priority: 90
+- id: extension
+  name: 定制扩展
+  keywords:
+  - 扩展
+  - custom
+  - mod
+  - feature
+  - 改造
+  - 二开
+  priority: 100

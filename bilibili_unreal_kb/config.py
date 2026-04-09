@@ -12,6 +12,9 @@ except ImportError:  # pragma: no cover
     load_dotenv = None
 
 
+DEFAULT_PACK_SLUG = "unreal-core"
+
+
 def _to_bool(value: str | None, default: bool = False) -> bool:
     if value is None:
         return default
@@ -30,9 +33,16 @@ def _to_int(value: str | None, default: int) -> int:
     return int(value)
 
 
+def default_pack_output_dir(root_output_dir: Path, pack_slug: str) -> Path:
+    return root_output_dir / "packs" / pack_slug
+
+
 @dataclass
 class AppConfig:
-    output_dir: Path = Path("./output")
+    root_output_dir: Path = Path("./output")
+    output_dir: Path = Path("./output/packs/unreal-core")
+    database_path: Path = Path("./output/app.db")
+    pack_slug: str = DEFAULT_PACK_SLUG
     pages: int = 2
     timeout: float = 20.0
     detail_connect_timeout: float = 5.0
@@ -44,7 +54,6 @@ class AppConfig:
     browser_fallback: bool = False
     browser_headless: bool = True
     browser_debug_url: str = ""
-    node_bin: str = "node"
     keywords_file: Optional[Path] = None
     cookie: str = ""
     since: Optional[date] = None
@@ -64,14 +73,26 @@ class AppConfig:
 
     @property
     def catalog_jsonl_path(self) -> Path:
+        return self.output_dir / "videos.jsonl"
+
+    @property
+    def legacy_catalog_jsonl_path(self) -> Path:
         return self.output_dir / "unreal_tutorials.jsonl"
 
     @property
     def catalog_csv_path(self) -> Path:
+        return self.output_dir / "videos.csv"
+
+    @property
+    def legacy_catalog_csv_path(self) -> Path:
         return self.output_dir / "unreal_tutorials.csv"
 
     @property
     def catalog_xlsx_path(self) -> Path:
+        return self.output_dir / "videos.xlsx"
+
+    @property
+    def legacy_catalog_xlsx_path(self) -> Path:
         return self.output_dir / "unreal_tutorials.xlsx"
 
     @property
@@ -79,6 +100,7 @@ class AppConfig:
         return self.output_dir / "index.md"
 
     def ensure_directories(self) -> None:
+        self.root_output_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.runs_dir.mkdir(parents=True, exist_ok=True)
@@ -90,14 +112,21 @@ def load_config(
     keywords_file: str | None = None,
     browser_fallback: bool | None = None,
     since: str | None = None,
+    pack_slug: str | None = None,
 ) -> AppConfig:
     if load_dotenv is not None:
         load_dotenv()
 
     env = os.environ
     resolved_since = since or env.get("BILIBILI_SINCE")
+    resolved_pack_slug = pack_slug or env.get("BILIBILI_PACK_SLUG", DEFAULT_PACK_SLUG)
+    root_output_dir = Path(env.get("BILIBILI_OUTPUT_DIR", "./output"))
+    resolved_output_dir = Path(output_dir) if output_dir else default_pack_output_dir(root_output_dir, resolved_pack_slug)
     config = AppConfig(
-        output_dir=Path(output_dir or env.get("BILIBILI_OUTPUT_DIR", "./output")),
+        root_output_dir=root_output_dir,
+        output_dir=resolved_output_dir,
+        database_path=root_output_dir / "app.db",
+        pack_slug=resolved_pack_slug,
         pages=pages if pages is not None else _to_int(env.get("BILIBILI_PAGES"), 2),
         timeout=_to_float(env.get("BILIBILI_REQUEST_TIMEOUT"), 20.0),
         detail_connect_timeout=_to_float(env.get("BILIBILI_DETAIL_CONNECT_TIMEOUT"), 5.0),
@@ -113,7 +142,6 @@ def load_config(
         ),
         browser_headless=_to_bool(env.get("BILIBILI_BROWSER_HEADLESS"), True),
         browser_debug_url=env.get("BILIBILI_BROWSER_DEBUG_URL", ""),
-        node_bin=env.get("BILIBILI_NODE_BIN", "node"),
         keywords_file=Path(keywords_file or env["BILIBILI_KEYWORDS_FILE"])
         if keywords_file or env.get("BILIBILI_KEYWORDS_FILE")
         else None,

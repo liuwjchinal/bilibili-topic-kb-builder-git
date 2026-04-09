@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 from .browser_fallback import search_with_playwright
 from .config import AppConfig
 from .models import SearchTask, SearchVideoSummary
-from .parser import SearchParseError, parse_search_page_with_node, parse_search_page_with_regex
+from .parser import SearchParseError, parse_search_page_with_pure_python, parse_search_page_with_regex
 
 try:
     import requests
@@ -60,7 +60,7 @@ class BilibiliCollector:
                     break
                 time.sleep(min(10, (2 ** (attempt - 1)) + random.random()))
         if last_error is None:
-            raise RuntimeError(f"请求失败: {target}")
+            raise RuntimeError(f"Request failed: {target}")
         raise last_error
 
     def _request_json(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -72,17 +72,14 @@ class BilibiliCollector:
             query["order"] = task.order
         html = self._request_text("https://search.bilibili.com/all", params=query)
         errors: list[str] = []
-        for parser in (
-            lambda content: parse_search_page_with_node(content, node_bin=self.config.node_bin),
-            parse_search_page_with_regex,
-        ):
+        for parser in (parse_search_page_with_pure_python, parse_search_page_with_regex):
             try:
                 return parser(html)
             except SearchParseError as exc:
                 errors.append(str(exc))
         if self.config.browser_fallback:
             return search_with_playwright(task, headless=self.config.browser_headless)
-        raise SearchParseError("；".join(errors))
+        raise SearchParseError("; ".join(errors))
 
     def fetch_video_detail(self, bvid: str) -> dict[str, Any]:
         payload = self._request_json(
@@ -90,7 +87,7 @@ class BilibiliCollector:
             params={"bvid": bvid},
         )
         if payload.get("code") != 0:
-            raise RuntimeError(f"获取详情失败: {bvid}, code={payload.get('code')}")
+            raise RuntimeError(f"Failed to fetch video detail for {bvid}, code={payload.get('code')}")
         return payload["data"]
 
     def fetch_video_tags(self, bvid: str) -> list[str]:
@@ -100,4 +97,8 @@ class BilibiliCollector:
         )
         if payload.get("code") != 0:
             return []
-        return [item.get("tag_name", "").strip() for item in payload.get("data") or [] if item.get("tag_name")]
+        return [
+            item.get("tag_name", "").strip()
+            for item in payload.get("data") or []
+            if item.get("tag_name")
+        ]

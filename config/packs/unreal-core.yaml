@@ -1,0 +1,136 @@
+slug: unreal-core
+display_name: Unreal Core
+description: Unreal Engine general learning videos on Bilibili.
+search:
+  core_terms:
+    - "虚幻引擎"
+    - "UE4"
+    - "UE5"
+    - "Unreal Engine"
+  expansion_terms:
+    - "教程"
+    - "入门"
+    - "实战"
+    - "蓝图"
+    - "材质"
+    - "动画"
+    - "AI"
+    - "性能优化"
+  custom_queries: []
+  orders:
+    - "default"
+    - "pubdate"
+  pages: 2
+gates:
+  must_have_any:
+    - "虚幻"
+    - "unreal"
+    - "ue4"
+    - "ue5"
+    - "blueprint"
+    - "niagara"
+    - "umg"
+  irrelevant_keywords:
+    - "搞笑"
+    - "整活"
+    - "鬼畜"
+    - "音乐"
+    - "舞蹈"
+    - "动漫"
+    - "影视"
+    - "reaction"
+    - "asmr"
+domain:
+  key: "game-dev-unreal"
+  display_name: "游戏开发/虚幻"
+  allow_partition_keywords:
+    - "知识"
+    - "科技"
+    - "软件应用"
+    - "设计·创意"
+    - "职业职场"
+    - "野生技能协会"
+    - "计算机技术"
+    - "数码"
+    - "单机游戏"
+    - "网络游戏"
+    - "手机游戏"
+  block_partition_keywords:
+    - "音乐"
+    - "演奏"
+    - "翻唱"
+    - "音乐现场"
+    - "舞蹈"
+    - "影视"
+    - "影视杂谈"
+    - "娱乐"
+    - "美食"
+    - "时尚"
+    - "房产"
+    - "动物圈"
+    - "汽车"
+    - "体育"
+    - "GMV"
+    - "MMD·3D"
+  required_context_any:
+    - "虚幻"
+    - "unreal"
+    - "ue5"
+    - "ue4"
+    - "教程"
+    - "源码"
+    - "blueprint"
+    - "蓝图"
+categories:
+  - id: cpp-plugin
+    name: "C++/插件开发"
+    priority: 10
+    keywords: ["c++", "cpp", "插件", "plugin", "源码", "编辑器扩展", "引擎源码"]
+  - id: optimization
+    name: "性能优化"
+    priority: 20
+    keywords: ["优化", "性能", "profiling", "optimization", "卡顿", "内存"]
+  - id: niagara
+    name: "特效/Niagara"
+    priority: 30
+    keywords: ["niagara", "特效", "vfx", "粒子", "fx"]
+  - id: material-rendering
+    name: "材质与渲染"
+    priority: 40
+    keywords: ["材质", "material", "shader", "渲染", "光照", "lumen", "nanite"]
+  - id: animation
+    name: "动画系统"
+    priority: 50
+    keywords: ["动画", "animation", "anim", "骨骼", "montage", "retarget"]
+  - id: ai
+    name: "AI 系统"
+    priority: 60
+    keywords: ["ai", "人工智能", "行为树", "黑板", "navigation", "navmesh"]
+  - id: blueprint
+    name: "蓝图系统"
+    priority: 70
+    keywords: ["蓝图", "blueprint", "bp节点", "可视化脚本"]
+  - id: ui
+    name: "UI/UMG"
+    priority: 80
+    keywords: ["umg", "ui", "界面", "widget", "hud", "commonui"]
+  - id: physics
+    name: "物理系统"
+    priority: 90
+    keywords: ["物理", "physics", "碰撞", "ragdoll", "布料"]
+  - id: level
+    name: "关卡/场景"
+    priority: 100
+    keywords: ["关卡", "场景", "landscape", "地形", "world partition", "环境"]
+  - id: gameplay
+    name: "游戏开发实战"
+    priority: 110
+    keywords: ["实战", "案例", "项目", "fps", "rpg", "demo", "项目开发"]
+  - id: pipeline
+    name: "工具链/工作流"
+    priority: 120
+    keywords: ["工作流", "pipeline", "版本控制", "perforce", "git", "导入", "构建"]
+  - id: beginner
+    name: "基础入门"
+    priority: 130
+    keywords: ["入门", "新手", "基础", "beginner", "零基础", "教程"]

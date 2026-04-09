@@ -42,6 +42,8 @@ class SearchVideoSummary:
     description: str = ""
     tag_text: str = ""
     publish_text: str = ""
+    partition_name: str = ""
+    partition_id: int | None = None
 
 
 @dataclass
@@ -65,12 +67,16 @@ class VideoRecord:
     publish_time: str
     query_keywords: list[str] = field(default_factory=list)
     source_pages: list[str] = field(default_factory=list)
-    primary_category: str = "其他"
+    primary_category: str = "其它"
     secondary_categories: list[str] = field(default_factory=list)
     category_confidence: float = 0.0
     match_keywords: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     desc_excerpt: str = ""
+    platform_partition_name: str = ""
+    platform_partition_id: int | None = None
+    cover_url: str = ""
+    uploader_avatar_url: str = ""
     crawl_time: str = ""
     run_id: str = ""
     status: str = "ok"
@@ -98,6 +104,10 @@ class VideoRecord:
             "match_keywords": "; ".join(self.match_keywords),
             "tags": "; ".join(self.tags),
             "desc_excerpt": self.desc_excerpt,
+            "platform_partition_name": self.platform_partition_name,
+            "platform_partition_id": self.platform_partition_id or "",
+            "cover_url": self.cover_url,
+            "uploader_avatar_url": self.uploader_avatar_url,
             "crawl_time": self.crawl_time,
             "run_id": self.run_id,
             "status": self.status,

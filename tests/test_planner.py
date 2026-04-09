@@ -16,6 +16,12 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("UE5 Niagara", [task.keyword for task in tasks])
         self.assertTrue(any(task.order == "pubdate" for task in tasks))
 
+    def test_lyra_pack_uses_focused_queries(self) -> None:
+        queries = build_keyword_queries(pack_slug="lyra")
+        self.assertNotIn("Lyra", queries)
+        self.assertIn("Lyra Starter Game 教程", queries)
+        self.assertIn("Lyra CommonUI", queries)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 
 from .classifier import classify_video, should_filter_irrelevant
 from .models import SearchTask, SearchVideoSummary, VideoRecord
+from .packs import PackDefinition
 
 
 def strip_markup(value: str) -> str:
@@ -58,6 +59,8 @@ def build_video_record(
     task: SearchTask,
     run_id: str,
     crawl_time: str,
+    *,
+    pack: PackDefinition | None = None,
 ) -> VideoRecord:
     detail = detail or {}
     title = strip_markup(detail.get("title") or summary.title)
@@ -70,17 +73,28 @@ def build_video_record(
         description=description,
         tags=tags,
         query_keyword=task.keyword,
+        pack=pack,
     )
     duration_seconds = int(detail.get("duration") or duration_text_to_seconds(summary.duration_text))
     uploader = (detail.get("owner") or {}).get("name") or summary.author
     play_count = int((detail.get("stat") or {}).get("view") or summary.play_count or 0)
     publish_time = epoch_to_iso8601(detail.get("pubdate")) or publish_text_to_iso8601(summary.publish_text)
     desc_excerpt = description.replace("\r", " ").replace("\n", " ").strip()[:240]
+    partition_name = str(detail.get("tname") or summary.partition_name or "").strip()
+    partition_id = detail.get("tid") or detail.get("typeid") or summary.partition_id
 
     status = "ok"
     if any(not field for field in [title, summary.bvid, uploader, publish_time]) or classification.confidence < 0.45:
         status = "needs_review"
-    if should_filter_irrelevant(title, description, tags):
+    if should_filter_irrelevant(
+        title,
+        description,
+        tags,
+        classification=classification,
+        partition_name=partition_name,
+        partition_id=partition_id,
+        pack=pack,
+    ):
         status = "filtered_irrelevant"
 
     return VideoRecord(
@@ -101,6 +115,8 @@ def build_video_record(
         match_keywords=classification.matched_keywords,
         tags=tags,
         desc_excerpt=desc_excerpt,
+        platform_partition_name=partition_name,
+        platform_partition_id=int(partition_id) if partition_id else None,
         crawl_time=crawl_time,
         run_id=run_id,
         status=status,
@@ -131,6 +147,10 @@ def merge_records(existing: VideoRecord, incoming: VideoRecord) -> VideoRecord:
     merged.play_count = max(existing.play_count, incoming.play_count)
     if len(incoming.desc_excerpt) > len(existing.desc_excerpt):
         merged.desc_excerpt = incoming.desc_excerpt
+    if not merged.platform_partition_name and incoming.platform_partition_name:
+        merged.platform_partition_name = incoming.platform_partition_name
+    if not merged.platform_partition_id and incoming.platform_partition_id:
+        merged.platform_partition_id = incoming.platform_partition_id
     if incoming.category_confidence >= existing.category_confidence:
         merged.primary_category = incoming.primary_category
         merged.category_confidence = incoming.category_confidence

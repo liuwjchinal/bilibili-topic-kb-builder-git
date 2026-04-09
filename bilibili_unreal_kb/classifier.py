@@ -3,53 +3,30 @@ from __future__ import annotations
 import re
 
 from .models import ClassificationResult
+from .packs import PackDefinition, get_pack
 
-CATEGORY_RULES: list[tuple[str, list[str]]] = [
-    ("C++/插件开发", ["c++", "cpp", "插件", "plugin", "源码", "编辑器扩展", "引擎源码"]),
-    ("性能优化", ["优化", "性能", "profiling", "optimization", "卡顿", "内存"]),
-    ("特效/Niagara", ["niagara", "特效", "vfx", "粒子", "fx"]),
-    ("材质与渲染", ["材质", "material", "shader", "渲染", "光照", "lumen", "nanite"]),
-    ("动画系统", ["动画", "animation", "anim", "骨骼", "montage", "retarget"]),
-    ("AI 系统", ["ai", "人工智能", "行为树", "黑板", "navigation", "navmesh"]),
-    ("蓝图系统", ["蓝图", "blueprint", "bp节点", "可视化脚本"]),
-    ("UI/UMG", ["umg", "ui", "界面", "widget", "hud"]),
-    ("物理系统", ["物理", "physics", "碰撞", "ragdoll", "布料"]),
-    ("关卡/场景", ["关卡", "场景", "landscape", "地形", "world partition", "环境"]),
-    ("游戏开发实战", ["实战", "案例", "项目", "fps", "rpg", "demo", "项目开发"]),
-    ("工具链/工作流", ["工作流", "pipeline", "版本控制", "perforce", "git", "导入", "构建"]),
-    ("基础入门", ["入门", "新手", "基础", "beginner", "零基础", "教程"]),
-]
-
-IRRELEVANT_KEYWORDS = {
-    "搞笑",
-    "整活",
-    "鬼畜",
-    "音乐",
-    "舞蹈",
-    "动漫",
-    "影视",
-    "reaction",
-    "asmr",
-}
-
-UE_HINT_KEYWORDS = {
-    "虚幻",
-    "unreal",
-    "ue4",
-    "ue5",
-    "蓝图",
-    "niagara",
-    "材质",
-    "umg",
-}
+OTHER_CATEGORY_NAMES = {"其它", "其他", "鍏跺畠"}
 
 
 def _contains(text: str, keyword: str) -> bool:
-    normalized = keyword.lower()
-    if re.fullmatch(r"[a-z0-9+.#-]+", normalized):
-        pattern = rf"(?<![a-z0-9]){re.escape(normalized)}(?![a-z0-9])"
+    normalized = keyword.lower().strip()
+    if not normalized:
+        return False
+    if re.fullmatch(r"[a-z0-9+.#\-_/ ]+", normalized):
+        escaped = re.escape(normalized).replace(r"\ ", r"\s+")
+        pattern = rf"(?<![a-z0-9]){escaped}(?![a-z0-9])"
         return re.search(pattern, text) is not None
     return normalized in text
+
+
+def _resolve_pack(pack: PackDefinition | None, pack_slug: str | None) -> PackDefinition:
+    if pack is not None:
+        return pack
+    return get_pack(pack_slug or "unreal-core")
+
+
+def _matches_any(text: str, keywords: list[str]) -> bool:
+    return any(_contains(text, keyword.lower()) for keyword in keywords)
 
 
 def classify_video(
@@ -57,46 +34,53 @@ def classify_video(
     description: str = "",
     tags: list[str] | None = None,
     query_keyword: str = "",
+    *,
+    pack: PackDefinition | None = None,
+    pack_slug: str | None = None,
 ) -> ClassificationResult:
+    resolved_pack = _resolve_pack(pack, pack_slug)
     tags = tags or []
+
     title_text = f" {title.lower()} "
     desc_text = f" {description.lower()} "
     query_text = f" {query_keyword.lower()} "
     tag_text = f" {' '.join(tag.lower() for tag in tags)} "
 
-    scores: list[tuple[str, int, list[str]]] = []
-    for category, keywords in CATEGORY_RULES:
+    scores: list[tuple[str, int, list[str], int]] = []
+    for category in resolved_pack.categories:
         score = 0
         matched: list[str] = []
-        for keyword in keywords:
-            if _contains(title_text, keyword.lower()):
+        for keyword in category.keywords:
+            keyword_text = keyword.lower()
+            if _contains(title_text, keyword_text):
                 score += 3
                 matched.append(keyword)
-            if _contains(query_text, keyword.lower()):
+            if _contains(query_text, keyword_text):
                 score += 2
                 matched.append(keyword)
-            if _contains(tag_text, keyword.lower()):
+            if _contains(tag_text, keyword_text):
                 score += 2
                 matched.append(keyword)
-            if _contains(desc_text, keyword.lower()):
+            if _contains(desc_text, keyword_text):
                 score += 1
                 matched.append(keyword)
         if score > 0:
-            scores.append((category, score, sorted(set(matched))))
+            scores.append((category.name, score, sorted(set(matched)), category.priority))
 
     if not scores:
         return ClassificationResult(
-            primary_category="其他",
+            primary_category="其它",
             secondary_categories=[],
             confidence=0.25,
             matched_keywords=[],
         )
 
-    priority = {name: index for index, (name, _) in enumerate(CATEGORY_RULES)}
-    scores.sort(key=lambda item: (-item[1], priority.get(item[0], 999)))
-    primary_category, primary_score, matched_keywords = scores[0]
-    secondary_categories = [category for category, score, _ in scores[1:4] if score >= max(2, primary_score - 2)]
+    scores.sort(key=lambda item: (-item[1], item[3], item[0]))
+    primary_category, primary_score, matched_keywords, _ = scores[0]
     second_score = scores[1][1] if len(scores) > 1 else 0
+    secondary_categories = [
+        category for category, score, _, _ in scores[1:4] if score >= max(2, primary_score - 2)
+    ]
     confidence = min(0.95, 0.35 + primary_score * 0.06 + max(primary_score - second_score, 0) * 0.03)
     return ClassificationResult(
         primary_category=primary_category,
@@ -106,9 +90,60 @@ def classify_video(
     )
 
 
-def should_filter_irrelevant(title: str, description: str, tags: list[str] | None = None) -> bool:
+def should_filter_irrelevant(
+    title: str,
+    description: str,
+    tags: list[str] | None = None,
+    classification: ClassificationResult | None = None,
+    partition_name: str = "",
+    partition_id: int | None = None,
+    *,
+    pack: PackDefinition | None = None,
+    pack_slug: str | None = None,
+) -> bool:
+    resolved_pack = _resolve_pack(pack, pack_slug)
     tags = tags or []
-    text = f"{title} {description} {' '.join(tags)}".lower()
-    has_ue_hint = any(keyword in text for keyword in UE_HINT_KEYWORDS)
-    has_irrelevant_hint = any(keyword in text for keyword in IRRELEVANT_KEYWORDS)
-    return has_irrelevant_hint and not has_ue_hint
+    text = f" {title.lower()} {description.lower()} {' '.join(tag.lower() for tag in tags)} "
+    partition_text = f" {(partition_name or '').lower()} "
+    has_gate = (
+        True
+        if not resolved_pack.gates.must_have_any
+        else _matches_any(text, resolved_pack.gates.must_have_any)
+    )
+    has_context = (
+        True
+        if not resolved_pack.gates.context_any
+        else _matches_any(text, resolved_pack.gates.context_any)
+    )
+    has_irrelevant_hint = _matches_any(text, resolved_pack.gates.irrelevant_keywords)
+    domain_context_keywords = resolved_pack.domain.required_context_any or resolved_pack.gates.context_any
+    has_domain_context = True if not domain_context_keywords else _matches_any(text, domain_context_keywords)
+    is_blocked_partition = bool(partition_name) and _matches_any(
+        partition_text,
+        resolved_pack.domain.block_partition_keywords,
+    )
+    is_allowed_partition = (
+        True
+        if not resolved_pack.domain.allow_partition_keywords or not partition_name
+        else _matches_any(partition_text, resolved_pack.domain.allow_partition_keywords)
+    )
+
+    if is_blocked_partition:
+        return True
+    if resolved_pack.domain.allow_partition_keywords and partition_name and not is_allowed_partition and not has_domain_context:
+        return True
+    if resolved_pack.gates.must_have_any and not has_gate:
+        return True
+    if has_irrelevant_hint and not has_gate:
+        return True
+    if has_gate and not has_context:
+        return True
+    if (
+        classification is not None
+        and resolved_pack.gates.context_any
+        and not has_context
+        and classification.primary_category in OTHER_CATEGORY_NAMES
+        and classification.confidence <= 0.35
+    ):
+        return True
+    return False
